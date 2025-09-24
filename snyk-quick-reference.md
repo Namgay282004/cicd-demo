@@ -242,7 +242,7 @@ snyk test --print-deps
 ```yaml
 - name: Notify Slack on Security Issues
   if: failure()
-  uses: 8398a7/action-slack@v3
+  uses: 8398a7/action-slack@v4
   with:
     status: failure
     text: "Security vulnerabilities detected"

@@ -66,7 +66,7 @@ jobs:
         run: mvn jacoco:report
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./target/site/jacoco/jacoco.xml
           fail_ci_if_error: false
@@ -156,7 +156,7 @@ jobs:
           fi
 
       - name: Upload SARIF results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: steps.check-sarif.outputs.sarif-exists == 'true'
         with:
           sarif_file: snyk-${{ matrix.scan-type }}.sarif
@@ -208,7 +208,7 @@ jobs:
             --sarif-file-output=snyk-container.sarif
 
       - name: Upload container scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: snyk-container.sarif
@@ -265,7 +265,7 @@ jobs:
 
     steps:
       - name: Send security alert
-        uses: 8398a7/action-slack@v3
+        uses: 8398a7/action-slack@v4
         with:
           status: failure
           text: |
