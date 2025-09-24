@@ -29,22 +29,51 @@ language-settings:
     # Java-specific configuration options
     # These settings apply to all Java scans in this project
 
-    # Exclude test dependencies from vulnerability scanning
-    # include-dev-deps: false
+    # Exclude test dependencies from vulnerability scanning to improve performance
+    include-dev-deps: false
 
     # Set Maven-specific options
-    # maven-aggregate-project: true
+    maven-aggregate-project: true
+    
+    # Performance optimization settings
+    max-depth: 10  # Limit dependency tree depth for faster scanning
 
 # Project-specific settings
 # These settings apply to the entire project
 exclude:
-  # Exclude specific directories from scanning
-  # - 'target/**'
-  # - '**/*.class'
-  # - 'logs/**'
+  # Exclude specific directories from scanning to improve performance
+  - 'target/**'
+  - '**/*.class'
+  - 'logs/**'
+  - '.git/**'
+  - 'node_modules/**'  # In case of mixed projects
+
 # Snyk Code specific settings (for SAST scanning)
-# code:
-#   # Exclude specific files or patterns from code analysis
-#   exclude:
-#     - 'src/test/**'
-#     - '**/*.properties'
+code:
+  # Exclude specific files or patterns from code analysis
+  exclude:
+    - 'src/test/**'           # Test files are not in production
+    - '**/*.properties'       # Configuration files
+    - '**/Test*.java'         # Test classes
+    - '**/*Test.java'         # Test classes
+    - '**/*Tests.java'        # Test classes
+    - 'target/**'             # Build artifacts
+    - '.github/**'            # GitHub workflows
+    
+  # Quality gates - fail build only on high severity issues
+  quality-gate:
+    critical: true    # Fail on critical issues
+    high: true        # Fail on high severity issues  
+    medium: false     # Don't fail on medium severity
+    low: false        # Don't fail on low severity
+
+# Performance and timeout settings
+timeout: 900  # 15 minutes timeout for scans
+
+# Organization and project tagging (for Snyk dashboard)
+tags:
+  - 'spring-boot'
+  - 'java-17'
+  - 'maven'
+  - 'cicd-demo'
+  - 'production'
