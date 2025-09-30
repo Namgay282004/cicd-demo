@@ -43,13 +43,14 @@
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>org.springframework.boot</groupId>
+				<groupId>org.sonarsource.scanner.maven</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>3.10.0.2594</version>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.10</version>
+				<version>0.8.11</version>
 				<executions>
 					<execution>
 						<id>prepare-agent</id>
@@ -60,15 +61,10 @@
 					<!-- attached to Maven test phase -->
 					<execution>
 						<id>report</id>
-						<!-- <phase>test</phase> -->
+						<phase>test</phase>
 						<goals>
 							<goal>report</goal>
 						</goals>
-						<configuration>
-							<formats>
-								<format>XML</format>
-							</formats>
-						</configuration>
 					</execution>
 				</executions>
 			</plugin>

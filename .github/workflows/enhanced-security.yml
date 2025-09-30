@@ -10,23 +10,6 @@ on:
   schedule:
     # Run security scan every Monday at 2 AM UTC
     - cron: "0 2 * * 1"
-  workflow_dispatch:
-    inputs:
-      debug_mode:
-        description: 'Enable debug mode for troubleshooting'
-        required: false
-        default: 'false'
-        type: boolean
-      severity_threshold:
-        description: 'Severity threshold (low, medium, high, critical)'
-        required: false
-        default: 'high'
-        type: choice
-        options:
-          - low
-          - medium
-          - high
-          - critical
 
 env:
   JAVA_VERSION: "17"
@@ -83,7 +66,7 @@ jobs:
         run: mvn jacoco:report
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./target/site/jacoco/jacoco.xml
           fail_ci_if_error: false
@@ -102,9 +85,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          # Fetch full history for better change detection
-          fetch-depth: 0
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
@@ -112,16 +92,6 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: "temurin"
           cache: maven
-
-      - name: Cache Snyk dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/snyk
-            ~/.snyk
-          key: snyk-cache-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            snyk-cache-${{ runner.os }}-
 
       - name: Build project (required for comprehensive scanning)
         run: mvn clean compile -DskipTests
@@ -148,84 +118,27 @@ jobs:
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          DEBUG: ${{ runner.debug && 'snyk' || '' }}
         run: |
           echo "🔍 Running Snyk dependency scan..."
-          
-          # Enhanced scan with configurable severity threshold
-          SEVERITY_THRESHOLD="${{ vars.SNYK_SEVERITY_THRESHOLD || 'high' }}"
-          echo "Using severity threshold: $SEVERITY_THRESHOLD"
-          
-          if ! snyk test --maven \
-            --severity-threshold=$SEVERITY_THRESHOLD \
-            --sarif-file-output=snyk-dependencies.sarif \
-            ${{ runner.debug && '--debug' || '' }}; then
-            echo "⚠️ Snyk test found vulnerabilities or failed, generating detailed report..."
-            
-            # Generate human-readable report for troubleshooting
-            snyk test --maven \
-              --severity-threshold=$SEVERITY_THRESHOLD \
-              --json-file-output=snyk-dependencies.json \
-              --sarif-file-output=snyk-dependencies.sarif \
-              ${{ runner.debug && '--debug' || '' }} || true
-              
-            # Show summary of vulnerabilities found
-            if [ -f "snyk-dependencies.json" ]; then
-              echo "📊 Vulnerability summary:"
-              cat snyk-dependencies.json | jq -r '.vulnerabilities[] | "- \(.title) (\(.severity)): \(.packageName)@\(.version)"' || true
-            fi
+          # Try the action first
+          if ! snyk test --maven --severity-threshold=medium --sarif-file-output=snyk-dependencies.sarif; then
+            echo "⚠️ Snyk test failed or found vulnerabilities, but continuing to generate SARIF"
+            # Ensure SARIF file is generated even if vulnerabilities are found
+            snyk test --maven --severity-threshold=medium --sarif-file-output=snyk-dependencies.sarif || true
           fi
 
       - name: Run Snyk Code Security Scan (SAST)
         if: matrix.scan-type == 'code'
         continue-on-error: true
-        timeout-minutes: 10
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          DEBUG: ${{ runner.debug && 'snyk' || '' }}
         run: |
           echo "🔍 Running Snyk code scan..."
-          
-          # Enhanced code scan with timeout and better error handling
-          CODE_SEVERITY_THRESHOLD="${{ vars.SNYK_CODE_SEVERITY_THRESHOLD || 'high' }}"
-          echo "Using code severity threshold: $CODE_SEVERITY_THRESHOLD"
-          
-          # Only scan changed files if this is a PR
-          SCAN_ARGS=""
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "🎯 PR detected - scanning only changed files for faster execution"
-            # Get list of changed files
-            git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
-            CHANGED_FILES=$(git diff --name-only ${{ github.base_ref }}...HEAD -- '*.java' '*.kt' '*.scala' | tr '\n' ' ')
-            if [ -n "$CHANGED_FILES" ]; then
-              SCAN_ARGS="--include=$CHANGED_FILES"
-              echo "Changed files to scan: $CHANGED_FILES"
-            else
-              echo "No relevant code files changed, skipping code scan"
-              exit 0
-            fi
-          fi
-          
-          if ! snyk code test \
-            --severity-threshold=$CODE_SEVERITY_THRESHOLD \
-            --sarif-file-output=snyk-code.sarif \
-            $SCAN_ARGS \
-            ${{ runner.debug && '--debug' || '' }}; then
-            echo "⚠️ Snyk code test found vulnerabilities or failed, generating detailed report..."
-            
+          # Try the code scan
+          if ! snyk code test --severity-threshold=high --sarif-file-output=snyk-code.sarif; then
+            echo "⚠️ Snyk code test failed or found vulnerabilities, but continuing to generate SARIF"
             # Ensure SARIF file is generated even if vulnerabilities are found
-            snyk code test \
-              --severity-threshold=$CODE_SEVERITY_THRESHOLD \
-              --sarif-file-output=snyk-code.sarif \
-              --json-file-output=snyk-code.json \
-              $SCAN_ARGS \
-              ${{ runner.debug && '--debug' || '' }} || true
-              
-            # Show summary of code issues found
-            if [ -f "snyk-code.json" ]; then
-              echo "📊 Code security issues summary:"
-              cat snyk-code.json | jq -r '.runs[0].results[]? | "- \(.ruleId): \(.message.text) (\(.level))"' || true
-            fi
+            snyk code test --severity-threshold=high --sarif-file-output=snyk-code.sarif || true
           fi
 
       - name: Check if SARIF file was generated
@@ -243,7 +156,7 @@ jobs:
           fi
 
       - name: Upload SARIF results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: steps.check-sarif.outputs.sarif-exists == 'true'
         with:
           sarif_file: snyk-${{ matrix.scan-type }}.sarif
@@ -284,21 +197,18 @@ jobs:
 
       - name: Run Snyk Container Scan
         uses: snyk/actions/docker@master
-        continue-on-error: true
-        timeout-minutes: 15
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           image: cicd-demo:latest
           args: >
-            --severity-threshold=${{ vars.SNYK_CONTAINER_SEVERITY_THRESHOLD || 'critical' }}
+            --severity-threshold=high
             --file=dockerfile
             --exclude-base-image-vulns
             --sarif-file-output=snyk-container.sarif
-            ${{ runner.debug && '--debug' || '' }}
 
       - name: Upload container scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: snyk-container.sarif
@@ -355,8 +265,7 @@ jobs:
 
     steps:
       - name: Send security alert
-        uses: 8398a7/action-slack@v3
-        continue-on-error: true
+        uses: 8398a7/action-slack@v4
         with:
           status: failure
           text: |
@@ -370,7 +279,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Create GitHub issue for security vulnerabilities
-        uses: actions/github-script@v7
+        uses: actions/github-script@v6
         with:
           script: |
             const title = `🚨 Security vulnerabilities detected - ${context.sha.substring(0, 7)}`;
@@ -401,74 +310,3 @@ jobs:
               body: body,
               labels: ['security', 'urgent']
             });
-
-  # Debug job for troubleshooting Snyk issues
-  debug-snyk:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.debug_mode == 'true'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: "temurin"
-          cache: maven
-
-      - name: Build project for debugging
-        run: mvn clean compile -DskipTests
-
-      - name: Install Snyk CLI with debugging
-        run: |
-          echo "📦 Installing Snyk CLI for debugging..."
-          npm install -g snyk
-          snyk --version
-          echo "Snyk CLI installed successfully"
-
-      - name: Authenticate Snyk
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          echo "🔐 Authenticating with Snyk..."
-          snyk auth ${{ secrets.SNYK_TOKEN }}
-          echo "Authentication completed"
-
-      - name: Debug Snyk Maven scan
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          DEBUG: "snyk"
-        run: |
-          echo "🔍 Running Snyk debug scan..."
-          echo "Working directory: $(pwd)"
-          echo "Java version: $(java -version)"
-          echo "Maven version: $(mvn -version)"
-          echo "Available files:"
-          ls -la
-          
-          echo "Maven dependencies tree:"
-          mvn dependency:tree || echo "Failed to get dependency tree"
-          
-          echo "Running Snyk test with debug..."
-          snyk test --maven \
-            --severity-threshold=${{ inputs.severity_threshold || 'high' }} \
-            --debug \
-            --print-deps \
-            --all-projects || echo "Snyk test completed with issues"
-
-      - name: Debug Snyk Code scan
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          DEBUG: "snyk"
-        run: |
-          echo "🔍 Running Snyk Code debug scan..."
-          
-          echo "Source code structure:"
-          find src -type f -name "*.java" | head -20
-          
-          echo "Running Snyk Code test with debug..."
-          snyk code test \
-            --severity-threshold=${{ inputs.severity_threshold || 'high' }} \
-            --debug || echo "Snyk code test completed with issues"
