@@ -24,35 +24,17 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          cache: maven
 
       - name: Build and run tests with coverage
         run: mvn clean verify
 
-      - name: Clean potential corrupted caches
-        run: |
-          rm -rf ~/.sonar/cache/* || true
-          rm -rf ~/.m2/repository/org/sonarsource/ || true
-
-      - name: Make retry script executable
-        run: chmod +x scripts/sonar-retry.sh
-
-      - name: SonarCloud Scan with Retry
+      - name: SonarCloud Scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed for PR decoration
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
-        run: ./scripts/sonar-retry.sh
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.projectKey=Namgay282004_cicd-demo \
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+            -Dsonar.host.url=https://sonarcloud.io
