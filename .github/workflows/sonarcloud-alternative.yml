@@ -1,6 +1,7 @@
-name: SonarCloud Security Analysis
+name: SonarCloud Security Analysis (Alternative)
 
 on:
+  workflow_dispatch:  # Manual trigger for testing
   push:
     branches:
       - master
@@ -10,7 +11,7 @@ on:
 
 jobs:
   sonarcloud:
-    name: SonarCloud SAST Scan
+    name: SonarCloud SAST Scan (GitHub Action)
     runs-on: ubuntu-latest
 
     steps:
@@ -25,13 +26,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
@@ -42,17 +36,12 @@ jobs:
       - name: Build and run tests with coverage
         run: mvn clean verify
 
-      - name: Clean potential corrupted caches
-        run: |
-          rm -rf ~/.sonar/cache/* || true
-          rm -rf ~/.m2/repository/org/sonarsource/ || true
-
-      - name: Make retry script executable
-        run: chmod +x scripts/sonar-retry.sh
-
-      - name: SonarCloud Scan with Retry
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed for PR decoration
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
-        run: ./scripts/sonar-retry.sh
+        with:
+          args: >
+            -Dsonar.projectKey=Namgay282004_cicd-demo
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
