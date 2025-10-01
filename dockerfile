@@ -1,5 +1,5 @@
 # Use a Java base image
-FROM openjdk:17-oracle
+FROM openjdk:26-oracle
 
 # https://medium.com/@skywalkerhunter/aws-docker-deploy-spring-boot-fe05a00191d9
 # added on 31st Oct
