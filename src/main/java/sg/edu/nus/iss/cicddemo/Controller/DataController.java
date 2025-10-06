@@ -2,8 +2,6 @@ package sg.edu.nus.iss.cicddemo.Controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,14 +47,7 @@ public class DataController {
                     .put("code", currency.code()));
         }
         return currencies;
-    }
 
-    @GetMapping(value = "/robots.txt", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> robotsTxt() {
-        String robotsContent = "User-agent: *\nDisallow: /";
-        return ResponseEntity.ok()
-                .header("Content-Type", "text/plain")
-                .body(robotsContent);
     }
 
 }

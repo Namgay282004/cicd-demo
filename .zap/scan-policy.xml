@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <policy>Security Scan Policy</policy>
+  <scanner>
+    <level>MEDIUM</level>
+    <strength>MEDIUM</strength>
+  </scanner>
+
+  <plugins>
+    <!-- SQL Injection -->
+    <plugin id="40018">
+      <enabled>true</enabled>
+      <level>MEDIUM</level>
+      <strength>HIGH</strength>
+    </plugin>
+
+    <!-- XSS (Reflected) -->
+    <plugin id="40012">
+      <enabled>true</enabled>
+      <level>MEDIUM</level>
+      <strength>HIGH</strength>
+    </plugin>
+
+    <!-- Path Traversal -->
+    <plugin id="6">
+      <enabled>true</enabled>
+      <level>MEDIUM</level>
+      <strength>MEDIUM</strength>
+    </plugin>
+
+    <!-- Command Injection -->
+    <plugin id="90020">
+      <enabled>true</enabled>
+      <level>HIGH</level>
+      <strength>HIGH</strength>
+    </plugin>
+  </plugins>
+</configuration>
