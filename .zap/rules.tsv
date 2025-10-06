@@ -1,0 +1,8 @@
+# ZAP Baseline Configuration
+# This configuration helps reduce false positives in security scanning
+
+# Rules to exclude (if needed)
+# 10021 - X-Content-Type-Options Header Missing - we're fixing this
+# 10049 - Storable and Cacheable Content - we're fixing this
+# 90004 - Insufficient Site Isolation Against Spectre Vulnerability - we're fixing this  
+# 90005 - Sec-Fetch-Dest Header is Missing - browser-specific, may not be critical for APIs
