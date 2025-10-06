@@ -1,12 +1,8 @@
 name: ZAP Baseline Scan
 
 on:
-  push:
-    branches: [master, main]
-  pull_request:
-    branches: [master, main]
-  workflow_dispatch:
-    
+  push
+  
 jobs:
   zap-baseline:
     runs-on: ubuntu-latest
